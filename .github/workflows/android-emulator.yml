@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   emulator:
-    runs-on: macos-15-intel
+    runs-on: ubuntu-22.04
     timeout-minutes: 35
     permissions:
       contents: read
@@ -15,15 +15,26 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Enable KVM acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
-      - name: Launch Android 15 emulator and run real WebView tests
+      - name: Install Android SDK 36 for compilation
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+      - name: Launch Android 13 emulator and run real WebView tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
           arch: x86_64
+          emulator-boot-timeout: 600
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: gradle :app:connectedDebugAndroidTest --stacktrace
       - name: Upload instrumentation reports
