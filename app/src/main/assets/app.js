@@ -7,6 +7,7 @@ const Story=window.YolculukStory;
 const Updates=window.YolculukUpdates;
 const Coach=window.YolculukCoach;
 const SafeStore=window.YolculukSafeStore;
+const CoachRouter=window.YolculukCoachRouter;
 const KEY='yolculuk66.offline.mvp.v1';
 const GGUF_DOWNLOAD_URL='https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf';
 const WORLDS={
@@ -169,6 +170,7 @@ function coachReply(question,key){
 }
 function coachView(key){
  const suggestion=coachReply('bugün ne yapayım',key);
+ const coachCTA=Core.activeTasks(state).length?'':'<button class="button secondary wide" data-action="newTask" type="button" style="margin-top:10px">+ İlk alışkanlığımı ekle</button>';
  return `<div class="page-title">AI KOÇ</div><p class="page-subtitle">Yolculuğunda sana eşlik eden kişisel ilerleme yardımcın.</p>
   <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">Bu ilk sürümde koç, cihazındaki verilere dayanan <strong>kural tabanlı</strong> bir yardımcıdır. ${localAiStatus==='ready'?'İçe aktarılan GGUF dil modeli etkin. Yanıtlar cihazında üretilir.':'Gerçek dil modeli henüz etkin değil; hazır olduğunda cihazında çalışacaktır.'}</p></div>
   <div class="card"><h3>🧠 Gerçek çevrimdışı AI (isteğe bağlı)</h3>
@@ -186,7 +188,7 @@ function coachView(key){
   <button class="button secondary wide" data-action="importLocalModel" type="button">Cihazdan GGUF model seç</button>
   <div style="height:7px"></div><button class="button secondary wide" data-action="loadLocalModel" type="button">Kaydedilmiş yerel modeli aç</button>
   <p class="muted" style="font-size:11px">Büyük model dosyaları RAM ve batarya tüketir. Model cihazın özel alanında saklanır; veriler internete gönderilmez.</p></div>
-  <div class="card"><h3>✧ Bugünkü öneri</h3><div class="bubble">${esc(suggestion)}</div></div>
+  <div class="card"><h3>✧ Bugünkü öneri</h3><div class="bubble">${esc(suggestion)}</div>${coachCTA}</div>
   <div class="card"><h3>Koçla konuş</h3><div class="chat" id="chatLog"><div class="bubble">Merhaba! Hangi alışkanlığında ilerlemek istiyorsun?</div>${coachLog.map(m=>`<div class="bubble ${m.who==='user'?'user':''}">${esc(m.text)}</div>`).join('')}</div>
   <div class="suggestions"><button data-action="ask" data-question="Bugün ne yapayım?">Bugün ne yapayım?</button><button data-action="ask" data-question="XP durumum">XP durumum</button><button data-action="ask" data-question="Motivasyon lazım">Motivasyon</button><button data-action="ask" data-question="Bu hafta nasıldım?">Son 7 gün</button><button data-action="ask" data-question="Hangi görevde zorlandım?">Zorlandığım görev</button></div>
   <form id="chatForm" class="chat-form" style="margin-top:11px"><input name="question" type="text" maxlength="250" placeholder="Koça bir şey sor..." required><button class="button primary" type="submit">Gönder</button></form></div>`;
@@ -236,18 +238,23 @@ function render(){
 }
 function ask(question){
  if(localAiBusy){toast('Yerel AI önceki yanıtı hazırlıyor.');return;}
+ const day=Core.dayKey();
+ const canModel=localAiStatus==='ready'&&window.AndroidAI&&typeof window.AndroidAI.generate==='function';
+ const decision=CoachRouter.route(state,question,day,canModel);
  coachLog.push({who:'user',text:question});
- if(localAiStatus==='ready'&&window.AndroidAI&&typeof window.AndroidAI.generate==='function'){
+ if(decision.mode==='model'){
   localAiBusy=true;
-  coachLog.push({who:'bot',text:'Yerel dil modeli yanıt hazırlıyor…',pending:true});
-  const key=Core.dayKey(),summary=Core.daySummary(state,key);
-  const context=JSON.stringify({date:key,day:Core.seasonDay(state.seasonStart,key),
-    xp:Core.totalXp(state),streak:Core.streak(state,key),
-    completed:summary.completedCount,planned:summary.plannedCount,
-    tasks:Core.activeTasks(state).slice(0,20).map(t=>({name:t.name,core:t.core,done:!!state.days[key]?.completed?.[t.id]}))});
-  try{window.AndroidAI.generate(question,context);}
-  catch(err){localAiBusy=false;coachLog.pop();coachLog.push({who:'bot',text:coachReply(question,key)});toast('Yerel model çalıştırılamadı.');}
- }else coachLog.push({who:'bot',text:coachReply(question,Core.dayKey())});
+  coachLog.push({who:'bot',text:'Yerel dil modeli yanıt hazırlıyor…',pending:true,question:question});
+  try{window.AndroidAI.generate(question,decision.context);}
+  catch(err){
+   localAiBusy=false;
+   coachLog.pop();
+   coachLog.push({who:'bot',text:CoachRouter.route(state,question,day,false).reply});
+   toast('Yerel model çalıştırılamadı; kayıtlarına göre öneri gösterildi.');
+  }
+ }else{
+  coachLog.push({who:'bot',text:decision.reply});
+ }
  if(coachLog.length>16)coachLog=coachLog.slice(-16);
  render();
  document.getElementById('chatLog')?.scrollIntoView({block:'end',behavior:'smooth'});
@@ -262,7 +269,14 @@ window.onLocalAIEvent=function(kind,payload){
   if(localAiBusy){
    localAiBusy=false;
    const index=coachLog.findLastIndex(m=>m.pending);
-   if(index>=0)coachLog[index]={who:'bot',text:kind==='reply'?String(payload):'Yerel modelden yanıt alınamadı. Kural tabanlı koçu kullanabilirsin.'};
+   if(index>=0){
+    const question=coachLog[index].question;
+    const result=kind==='reply'
+      ?CoachRouter.acceptModelReply(state,question,payload,Core.dayKey())
+      :{reply:CoachRouter.route(state,question,Core.dayKey(),false).reply,usedFallback:true};
+    coachLog[index]={who:'bot',text:result.reply};
+    if(kind==='reply'&&result.usedFallback)toast('Yanıt çok genel kaldı; kayıtlarına göre yerel öneri gösterildi.');
+   }
   }
  }
  render();

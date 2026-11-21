@@ -36,3 +36,7 @@ CI: [GitHub Actions](https://github.com/huseyinozcanasta/Yolculuk66/actions). An
 ## v0.3.5 ÔÇö Resm+« GGUF model indirme ba¦þlant¦-s¦-
 AI Ko+ð ekran¦-na Qwen2.5-0.5B-Instruct Q4_K_M i+ðin yakla+þ¦-k 491 MB'l¦-k resm+« dosyan¦-n indirme d+-¦þmesi eklendi: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf . Yaln¦-z t¦-klan¦-nca Android taray¦-c¦-s¦- a+ð¦-l¦-r; otomatik indirme yoktur. ¦-ndirdikten sonra AI Ko+ð > Cihazdan GGUF model se+ð > ¦-ndirilenler klas+Âr+-ndeki GGUF > Kaydedilmi+þ yerel modeli a+ð. Model, Hugging Face'den gelir; sohbet ve al¦-+þkanl¦-k kay¦-tlar¦- internete g+Ânderilmez. Ger+ðek cihazda modelden yan¦-t +-retme do¦þrulamas¦- devam ediyor.
 
+
+## v0.3.6 ÔÇö AI Coach response grounding
+Questions about today's plan, XP, tasks, streaks, and weekly progress are answered deterministically from the on-device game records. Greetings and empty-task states are handled locally. The user can add a first habit directly from the coach screen. Open-ended questions still use the optional GGUF model; generic or unhelpful model answers fall back to local coaching. The model prompt requests direct, grounded Turkish answers. No gameplay data is sent to a server.
+

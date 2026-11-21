@@ -68,6 +68,20 @@ public final class WebViewSmokeTest {
     assertEquals("true",javascript("typeof window.AndroidAI.openModelDownload==='function'"));
   }
 
+  @Test public void screenshotRegressionCoachAnswersTodaysPlanFromLocalRecords() throws Exception {
+    awaitAppReady();
+    assertEquals("true",javascript(
+      "var s=HabitCore.initialState();" +
+      "var r=YolculukCoachRouter.route(s,'Bugün ne yapayım?',HabitCore.dayKey(),true);" +
+      "r.mode==='local' && /alışkanlık|görev/i.test(r.reply) && !/Nasıl yardımcı olabilirim/i.test(r.reply)"
+    ));
+    assertEquals("true",javascript(
+      "var r=YolculukCoachRouter.acceptModelReply(HabitCore.initialState()," +
+      "'Bugün ne yapayım?','Daha fazla yardımcı olamayım. Size nasıl yardımcı olabilirim?',HabitCore.dayKey());" +
+      "r.usedFallback && /görev|alışkanlık/i.test(r.reply)"
+    ));
+  }
+
   @Test public void savedHabitSurvivesAndroidActivityRestart() throws Exception {
     awaitAppReady();
     String before=javascript(
