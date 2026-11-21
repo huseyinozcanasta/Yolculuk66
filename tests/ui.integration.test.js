@@ -23,3 +23,10 @@ test('no update request is performed during initial render', () => {
   const renderFunction = app.split('function render(){')[1].split('function ask(')[0];
   assert.doesNotMatch(renderFunction,/checkForUpdates|checkUpdates\(/);
 });
+
+test('coach analytics is included before app code and exposes weekly features', () => {
+ const html=asset('index.html'), app=asset('app.js');
+ assert.ok(html.indexOf('coach-analytics.js')<html.indexOf('app.js'));
+ assert.ok(app.includes('Coach.answer(state,question,key)'));
+ assert.match(app,/Bu hafta nasıldım?/);
+});

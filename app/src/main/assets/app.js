@@ -5,6 +5,7 @@ const Core=window.HabitCore;
 const Backup=window.YolculukBackup;
 const Story=window.YolculukStory;
 const Updates=window.YolculukUpdates;
+const Coach=window.YolculukCoach;
 const KEY='yolculuk66.offline.mvp.v1';
 const WORLDS={
  forest:{name:'Zümrüt Orman',eyebrow:'BİRİNCİ DÜNYA',text:'Kadim ağaçların fısıltıları arasında kendi disiplinini keşfet.',icon:'🌿',css:'',chapter:'Kayıp Tohumlar'},
@@ -128,6 +129,7 @@ function analysisView(key){const xp=Core.totalXp(state),lv=Core.levelForXp(xp),s
  <div class="card"><h3>Gelişim notu</h3><p class="muted" style="font-size:12px;line-height:1.7">${successes?'En az bir başarılı günü tamamladın. Tutarlı küçük adımlar uzun yolculukların temelidir.':'İlk başarılı günün için 1–3 ana alışkanlık belirle ve temel XP hedefini tamamla.'}</p></div>`;
 }
 function coachReply(question,key){
+ if(Coach)return Coach.answer(state,question,key);
  const q=question.toLocaleLowerCase('tr-TR'),summary=Core.daySummary(state,key),st=Core.streak(state,key);
  if(/xp|seviye|puan/.test(q))return `Şu ana kadar ${Core.totalXp(state)} XP kazandın ve ${Core.levelForXp(Core.totalXp(state)).level}. seviyedesin. XP'yi yalnız gerçekten tamamladığın alışkanlıklardan alırsın.`;
  if(/seri|gün/.test(q))return `Mevcut başarı serin ${st} gün. Bugün ${summary.coreDone}/${summary.coreCount} ana alışkanlığı tamamladın. Serinin devamı için hepsini bitirmeyi hedefle.`;
@@ -144,7 +146,7 @@ function coachView(key){
   <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">Bu ilk sürümde koç, cihazındaki verilere dayanan <strong>kural tabanlı</strong> bir yardımcıdır. Henüz gerçek bir yerel yapay zekâ modeli değildir.</p></div>
   <div class="card"><h3>✧ Bugünkü öneri</h3><div class="bubble">${esc(suggestion)}</div></div>
   <div class="card"><h3>Koçla konuş</h3><div class="chat" id="chatLog"><div class="bubble">Merhaba! Hangi alışkanlığında ilerlemek istiyorsun?</div>${coachLog.map(m=>`<div class="bubble ${m.who==='user'?'user':''}">${esc(m.text)}</div>`).join('')}</div>
-  <div class="suggestions"><button data-action="ask" data-question="Bugün ne yapayım?">Bugün ne yapayım?</button><button data-action="ask" data-question="XP durumum">XP durumum</button><button data-action="ask" data-question="Motivasyon lazım">Motivasyon</button></div>
+  <div class="suggestions"><button data-action="ask" data-question="Bugün ne yapayım?">Bugün ne yapayım?</button><button data-action="ask" data-question="XP durumum">XP durumum</button><button data-action="ask" data-question="Motivasyon lazım">Motivasyon</button><button data-action="ask" data-question="Bu hafta nasıldım?">Son 7 gün</button><button data-action="ask" data-question="Hangi görevde zorlandım?">Zorlandığım görev</button></div>
   <form id="chatForm" class="chat-form" style="margin-top:11px"><input name="question" type="text" maxlength="250" placeholder="Koça bir şey sor..." required><button class="button primary" type="submit">Gönder</button></form></div>`;
 }
 async function checkUpdates(){
