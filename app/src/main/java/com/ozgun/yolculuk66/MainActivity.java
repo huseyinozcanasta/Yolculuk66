@@ -20,10 +20,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 public final class MainActivity extends Activity {
-  private static final int OPEN_BACKUP=401, SAVE_BACKUP=402, MAX_BACKUP=4*1024*1024;
+  private static final int OPEN_BACKUP=401, SAVE_BACKUP=402, IMPORT_MODEL=403, MAX_BACKUP=4*1024*1024;
   private static final String RELEASE_API="https://api.github.com/repos/huseyinozcanasta/Yolculuk66/releases?per_page=5";
   private static final String RELEASE_PREFIX="https://github.com/huseyinozcanasta/yolculuk66/releases/";
   private WebView webView;
+  private OfflineAiHost aiHost;
+  private boolean modelReplaceAllowed=false;
   private String pendingBackup;
   @SuppressLint("SetJavaScriptEnabled")
   @Override public void onCreate(Bundle savedInstanceState) {
@@ -46,6 +48,9 @@ public final class MainActivity extends Activity {
     });
     webView.addJavascriptInterface(new FilesBridge(),"AndroidFiles");
     webView.addJavascriptInterface(new UpdatesBridge(),"AndroidUpdates");
+    aiHost=new OfflineAiHost(this, (kind,payload) ->
+      callback("window.onLocalAIEvent("+JSONObject.quote(kind)+","+JSONObject.quote(payload)+");"));
+    webView.addJavascriptInterface(new AIModelBridge(),"AndroidAI");
     setContentView(webView);
     webView.loadUrl("file:///android_asset/index.html");
   }
@@ -55,6 +60,31 @@ public final class MainActivity extends Activity {
   private void message(String text) {
     callback("window.showNativeMessage("+JSONObject.quote(text)+");");
   }
+  public final class AIModelBridge {
+    @JavascriptInterface public String status() {
+      return aiHost!=null?aiHost.status():"unavailable";
+    }
+    @JavascriptInterface public void chooseModel(boolean allowReplace) {
+      runOnUiThread(()->{
+        modelReplaceAllowed=allowReplace;
+        Intent choose=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        choose.setType("*/*");
+        choose.addCategory(Intent.CATEGORY_OPENABLE);
+        try {startActivityForResult(choose,IMPORT_MODEL);}
+        catch(ActivityNotFoundException ex){message("Model dosya seçicisi bulunamadı.");}
+      });
+    }
+    @JavascriptInterface public void loadModel() {
+      if(aiHost!=null)aiHost.loadModel();
+    }
+    @JavascriptInterface public void generate(String question,String localContext) {
+      if(question==null||question.length()>1000||localContext==null||localContext.length()>2400){
+        message("Yerel AI isteği çok uzun.");return;
+      }
+      if(aiHost!=null)aiHost.generate(question,localContext);
+    }
+  }
+
   public final class FilesBridge {
     @JavascriptInterface public void openEncryptedBackup() {
       runOnUiThread(()->{
@@ -118,6 +148,11 @@ public final class MainActivity extends Activity {
   }
   @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
     super.onActivityResult(requestCode,resultCode,data);
+    if(requestCode==IMPORT_MODEL) {
+      if(resultCode==RESULT_OK&&data!=null&&data.getData()!=null&&aiHost!=null)
+        aiHost.importModel(data.getData(),modelReplaceAllowed);
+      return;
+    }
     if(requestCode==SAVE_BACKUP){
       String saved=pendingBackup;pendingBackup=null;
       if(resultCode!=RESULT_OK||data==null||saved==null)return;
@@ -145,7 +180,9 @@ public final class MainActivity extends Activity {
     else super.onBackPressed();
   }
   @Override protected void onDestroy(){
-    if(webView!=null){webView.removeJavascriptInterface("AndroidFiles");
+    if(aiHost!=null){aiHost.shutdown();aiHost=null;}
+    if(webView!=null){webView.removeJavascriptInterface("AndroidAI");
+      webView.removeJavascriptInterface("AndroidFiles");
       webView.removeJavascriptInterface("AndroidUpdates");webView.destroy();webView=null;}
     super.onDestroy();
   }

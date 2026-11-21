@@ -5,7 +5,7 @@
   if (root) root.YolculukUpdates = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
-  const CURRENT_VERSION = '0.3.3';
+  const CURRENT_VERSION = '0.3.4';
   const REPO = 'huseyinozcanasta/Yolculuk66';
   const RELEASE_API = 'https://api.github.com/repos/' + REPO + '/releases?per_page=5';
   const RELEASES_URL = 'https://github.com/' + REPO + '/releases';

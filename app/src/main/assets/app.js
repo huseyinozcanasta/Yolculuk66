@@ -6,6 +6,7 @@ const Backup=window.YolculukBackup;
 const Story=window.YolculukStory;
 const Updates=window.YolculukUpdates;
 const Coach=window.YolculukCoach;
+const SafeStore=window.YolculukSafeStore;
 const KEY='yolculuk66.offline.mvp.v1';
 const WORLDS={
  forest:{name:'Zümrüt Orman',eyebrow:'BİRİNCİ DÜNYA',text:'Kadim ağaçların fısıltıları arasında kendi disiplinini keşfet.',icon:'🌿',css:'',chapter:'Kayıp Tohumlar'},
@@ -15,10 +16,16 @@ const WORLDS={
 const MILESTONES=[11,22,33,44,55,66];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let storageWorks=true;
+let storageLocked=false;
 let state=load();
 let tab='today';
 let focusSelection=new Set();
 let coachLog=[];
+let localAiStatus='unavailable';
+let localAiBusy=false;
+try{if(window.AndroidAI&&typeof window.AndroidAI.status==='function')
+ localAiStatus=window.AndroidAI.status();}catch(_){}
+
 let toastTimer=null;
 const view=document.getElementById('view');
 const dialog=document.getElementById('taskDialog');
@@ -32,20 +39,39 @@ let pendingRestoreText=null;
 
 function load(){
  try{
-  const raw=localStorage.getItem(KEY);
-  if(!raw)return Core.initialState();
-  const d=JSON.parse(raw);
-  if(d&&d.version===1&&Array.isArray(d.tasks)&&d.days&&typeof d.days==='object'&&['forest','desert','sky'].includes(d.world))return d;
- }catch(e){storageWorks=false;}
- return Core.initialState();
+  const result=SafeStore.load(localStorage,KEY,Core.initialState,Backup.validateState);
+  storageLocked=result.locked;
+  storageWorks=!result.locked;
+  return result.state;
+ }catch(err){
+  storageLocked=true;
+  storageWorks=false;
+  return Core.initialState();
+ }
 }
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));storageWorks=true;}catch(e){storageWorks=false;}}
+function persist(){
+ if(storageLocked){storageWorks=false;return false;}
+ try{
+  Backup.validateState(state);
+  SafeStore.save(localStorage,KEY,state,false);
+  storageWorks=true;
+  return true;
+ }catch(err){storageWorks=false;return false;}
+}
 window.showNativeMessage=function(message){toast(message);};
 function toast(message){
  const el=document.getElementById('toast');el.textContent=message;el.classList.add('visible');
  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),2700);
 }
-function update(next,message){state=next;persist();render();if(message)toast(message);}
+function update(next,message){
+ if(storageLocked)throw new Error('Yerel kayıt bozuk ve koruma altında; önce şifreli yedeğini geri yükle.');
+ Backup.validateState(next);
+ SafeStore.save(localStorage,KEY,next,false);
+ state=next;
+ storageWorks=true;
+ render();
+ if(message)toast(message);
+}
 function fmtDate(key){try{const parts=key.split('-').map(Number);return new Intl.DateTimeFormat('tr-TR',{day:'numeric',month:'long',year:'numeric'}).format(new Date(parts[0],parts[1]-1,parts[2]));}catch(e){return key;}}
 function progress(percent,cls=''){return `<div class="progress ${cls}"><div style="width:${Math.max(0,Math.min(100,percent))}%"></div></div>`;}
 function mountain(){return `<svg class="mountain" viewBox="0 0 360 190" preserveAspectRatio="none" aria-hidden="true"><path d="M0 139L38 102L66 119L115 56L174 118L211 80L253 112L309 31L360 113V190H0Z" fill="#a47aa6" opacity=".5"/><path d="M0 165L55 123L96 143L138 87L188 155L229 112L266 144L322 71L360 126V190H0Z" fill="#272c59"/><path d="M0 178L60 148L105 166L162 126L213 168L275 132L360 163V190H0Z" fill="#101c3e"/><path d="M0 188L22 174L29 155L37 174L60 188M293 190L309 164L318 184L331 149L344 179L360 189" fill="#0b182e"/></svg>`;}
@@ -63,7 +89,7 @@ function taskCard(task,summaryKey,allowArchive){
       <button type="button" class="round-btn ${completed?'done':''}" aria-label="${completed?'Tamamlamayı geri al':'Görevi tamamla'}" data-action="${completed?'undo':'complete'}" data-id="${esc(task.id)}">${completed?'✓':'○'}</button>
     </div></div>${allowArchive?`<div style="text-align:right;margin-top:-3px;margin-bottom:9px"><button class="small-button" data-action="archive" data-id="${esc(task.id)}">Bu görevi arşivle</button></div>`:''}`;
 }
-function storageNotice(){return storageWorks?'':'<div class="notice error-notice">⚠ Yerel kayıt alanına erişilemiyor. Verilerin kalıcılığı garanti edilemiyor; özel gezinme modunu kontrol et.</div>';}
+function storageNotice(){if(storageLocked)return '<div class="notice error-notice">⚠ Cihazdaki kayıt doğrulanamadı. Orijinal kayıt korunuyor, üzerine yazılmayacak. Şifreli yedeğini geri yükleyebilirsin.</div>';return storageWorks?'':'<div class="notice error-notice">⚠ Yerel kayıt alanına erişilemiyor. Verilerin kalıcılığı garanti edilemiyor; özel gezinme modunu kontrol et.</div>';}
 function todayView(key){
  const day=Core.seasonDay(state.seasonStart,key),world=WORLDS[state.world]||WORLDS.forest;
  const summary=Core.daySummary(state,key),xp=Core.totalXp(state),lv=Core.levelForXp(xp),st=Core.streak(state,key);
@@ -143,7 +169,14 @@ function coachReply(question,key){
 function coachView(key){
  const suggestion=coachReply('bugün ne yapayım',key);
  return `<div class="page-title">AI KOÇ</div><p class="page-subtitle">Yolculuğunda sana eşlik eden kişisel ilerleme yardımcın.</p>
-  <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">Bu ilk sürümde koç, cihazındaki verilere dayanan <strong>kural tabanlı</strong> bir yardımcıdır. Henüz gerçek bir yerel yapay zekâ modeli değildir.</p></div>
+  <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">Bu ilk sürümde koç, cihazındaki verilere dayanan <strong>kural tabanlı</strong> bir yardımcıdır. ${localAiStatus==='ready'?'İçe aktarılan GGUF dil modeli etkin. Yanıtlar cihazında üretilir.':'Gerçek dil modeli henüz etkin değil; hazır olduğunda cihazında çalışacaktır.'}</p></div>
+  <div class="card"><h3>🧠 Gerçek çevrimdışı AI (isteğe bağlı)</h3>
+  <p class="muted" style="line-height:1.6">Durum: <strong>${esc(localAiStatus)}</strong>.
+  0,5B boyutunda GGUF bir model seçtiğinde sohbeti yalnız cihazında çalıştırabilirsin.
+  Model içe aktarılmadığında eski kural tabanlı koç kullanılır.</p>
+  <button class="button secondary wide" data-action="importLocalModel" type="button">Cihazdan GGUF model seç</button>
+  <div style="height:7px"></div><button class="button secondary wide" data-action="loadLocalModel" type="button">Kaydedilmiş yerel modeli aç</button>
+  <p class="muted" style="font-size:11px">Büyük model dosyaları RAM ve batarya tüketir. Model cihazın özel alanında saklanır; veriler internete gönderilmez.</p></div>
   <div class="card"><h3>✧ Bugünkü öneri</h3><div class="bubble">${esc(suggestion)}</div></div>
   <div class="card"><h3>Koçla konuş</h3><div class="chat" id="chatLog"><div class="bubble">Merhaba! Hangi alışkanlığında ilerlemek istiyorsun?</div>${coachLog.map(m=>`<div class="bubble ${m.who==='user'?'user':''}">${esc(m.text)}</div>`).join('')}</div>
   <div class="suggestions"><button data-action="ask" data-question="Bugün ne yapayım?">Bugün ne yapayım?</button><button data-action="ask" data-question="XP durumum">XP durumum</button><button data-action="ask" data-question="Motivasyon lazım">Motivasyon</button><button data-action="ask" data-question="Bu hafta nasıldım?">Son 7 gün</button><button data-action="ask" data-question="Hangi görevde zorlandım?">Zorlandığım görev</button></div>
@@ -192,7 +225,39 @@ function render(){
  else view.innerHTML=coachView(key);
  document.querySelectorAll('.nav-item').forEach(btn=>{const sel=btn.dataset.tab===tab;btn.classList.toggle('selected',sel);btn.setAttribute('aria-current',sel?'page':'false');});
 }
-function ask(question){coachLog.push({who:'user',text:question});coachLog.push({who:'bot',text:coachReply(question,Core.dayKey())});if(coachLog.length>16)coachLog=coachLog.slice(-16);render();document.getElementById('chatLog')?.scrollIntoView({block:'end',behavior:'smooth'});}
+function ask(question){
+ if(localAiBusy){toast('Yerel AI önceki yanıtı hazırlıyor.');return;}
+ coachLog.push({who:'user',text:question});
+ if(localAiStatus==='ready'&&window.AndroidAI&&typeof window.AndroidAI.generate==='function'){
+  localAiBusy=true;
+  coachLog.push({who:'bot',text:'Yerel dil modeli yanıt hazırlıyor…',pending:true});
+  const key=Core.dayKey(),summary=Core.daySummary(state,key);
+  const context=JSON.stringify({date:key,day:Core.seasonDay(state.seasonStart,key),
+    xp:Core.totalXp(state),streak:Core.streak(state,key),
+    completed:summary.completedCount,planned:summary.plannedCount,
+    tasks:Core.activeTasks(state).slice(0,20).map(t=>({name:t.name,core:t.core,done:!!state.days[key]?.completed?.[t.id]}))});
+  try{window.AndroidAI.generate(question,context);}
+  catch(err){localAiBusy=false;coachLog.pop();coachLog.push({who:'bot',text:coachReply(question,key)});toast('Yerel model çalıştırılamadı.');}
+ }else coachLog.push({who:'bot',text:coachReply(question,Core.dayKey())});
+ if(coachLog.length>16)coachLog=coachLog.slice(-16);
+ render();
+ document.getElementById('chatLog')?.scrollIntoView({block:'end',behavior:'smooth'});
+}
+window.onLocalAIEvent=function(kind,payload){
+ if(kind==='status'){
+  const cut=String(payload).indexOf('|');
+  localAiStatus=cut>=0?String(payload).slice(0,cut):String(payload);
+  toast(cut>=0?String(payload).slice(cut+1):payload);
+ }else if(kind==='reply'||kind==='error'){
+  if(kind==='error')toast(payload||'Yerel AI işlemi başarısız.');
+  if(localAiBusy){
+   localAiBusy=false;
+   const index=coachLog.findLastIndex(m=>m.pending);
+   if(index>=0)coachLog[index]={who:'bot',text:kind==='reply'?String(payload):'Yerel modelden yanıt alınamadı. Kural tabanlı koçu kullanabilirsin.'};
+  }
+ }
+ render();
+};
 document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{tab=btn.dataset.tab;render();window.scrollTo({top:0,behavior:'instant'});}));
 document.addEventListener('click',ev=>{if(ev.target.closest('[data-close]')){dialog.close();backupDialog.close();restoreDialog.close();recoveryDialog.close();pendingSave=null;recoveryCodeOutput.textContent='';}});
 recoveryDialog.addEventListener('cancel',()=>{pendingSave=null;recoveryCodeOutput.textContent='';document.getElementById('recoveryForm').reset();});
@@ -201,7 +266,7 @@ view.addEventListener('click',ev=>{
  const action=btn.dataset.action,id=btn.dataset.id,key=Core.dayKey();
  try{
   if(action==='newTask'){dialog.showModal();document.getElementById('taskName').focus();}
-  if(action==='backup')backupDialog.showModal();
+  if(action==='backup'){if(storageLocked)throw new Error('Bozuk kayıt koruma altında; yeni boş yedek oluşturulamaz.');backupDialog.showModal();}
   if(action==='restore'){if(window.AndroidFiles&&window.AndroidFiles.openEncryptedBackup)window.AndroidFiles.openEncryptedBackup();else fileInput.click();}
   if(action==='focus'){if(focusSelection.has(id))focusSelection.delete(id);else focusSelection.add(id);render();}
   if(action==='complete'){
@@ -222,6 +287,16 @@ view.addEventListener('click',ev=>{
   }
   if(action==='world')update(Core.setWorld(state,btn.dataset.world),'Dünya seçildi.');
   if(action==='ask')ask(btn.dataset.question);
+  if(action==='importLocalModel'){
+   if(!window.AndroidAI)throw new Error('Bu Android sürümünde yerel AI desteği bulunmuyor.');
+   const replace=localAiStatus!=='none'&&localAiStatus!=='unavailable';
+   if(!replace||window.confirm('Önceki GGUF modelini değiştirmek istiyor musun? Koruma kopyası saklanır.'))
+    window.AndroidAI.chooseModel(replace);
+  }
+  if(action==='loadLocalModel'){
+   if(!window.AndroidAI)throw new Error('Yerel AI köprüsü bulunmuyor.');
+   window.AndroidAI.loadModel();
+  }
   if(action==='checkUpdates')checkUpdates();
  }catch(e){toast(e.message||'İşlem tamamlanamadı.');}
 });
@@ -293,8 +368,9 @@ document.getElementById('restoreForm').addEventListener('submit',async ev=>{
    'Geri yükleme bu cihazın ana kayıtlarını değiştirebilir.\n'+
    'Önce yerel koruma kopyası alınacak. Devam edilsin mi?';
   if(!window.confirm(prompt))return;
-  Backup.commitRestore(localStorage,KEY,state,target);
-  state=target;storageWorks=true;pendingRestoreText=null;restoreDialog.close();form.reset();tab='analysis';render();toast('Yedek geri yüklendi; koruma kopyası saklandı.');
+  if(storageLocked)SafeStore.recoverCorrupt(localStorage,KEY,target,Backup.validateState);
+  else Backup.commitRestore(localStorage,KEY,state,target);
+  storageLocked=false;state=target;storageWorks=true;pendingRestoreText=null;restoreDialog.close();form.reset();tab='analysis';render();toast('Yedek geri yüklendi; koruma kopyası saklandı.');
  }catch(e){toast(e.message||'Yedek geri yüklenemedi.');}
  finally{button.disabled=false;}
 });
