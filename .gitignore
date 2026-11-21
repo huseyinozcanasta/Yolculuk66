@@ -21,3 +21,4 @@ patch-safe-store.cjs
 *.gguf
 patch-ai-java.cjs
 patch-ai-ui.cjs
+patch-*.cjs

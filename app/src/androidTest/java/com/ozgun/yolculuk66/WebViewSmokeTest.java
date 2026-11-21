@@ -59,6 +59,15 @@ public final class WebViewSmokeTest {
     ));
   }
 
+  @Test public void officialGGUFDownloadButtonAndNativeHandoffArePresent() throws Exception {
+    awaitAppReady();
+    assertEquals("true",javascript(
+      "document.querySelector('[data-tab=\"coach\"]').click();" +
+      "Boolean(document.querySelector('[data-action=\"downloadLocalModel\"]'))"
+    ));
+    assertEquals("true",javascript("typeof window.AndroidAI.openModelDownload==='function'"));
+  }
+
   @Test public void savedHabitSurvivesAndroidActivityRestart() throws Exception {
     awaitAppReady();
     String before=javascript(

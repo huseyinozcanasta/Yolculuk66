@@ -8,6 +8,7 @@ const Updates=window.YolculukUpdates;
 const Coach=window.YolculukCoach;
 const SafeStore=window.YolculukSafeStore;
 const KEY='yolculuk66.offline.mvp.v1';
+const GGUF_DOWNLOAD_URL='https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf';
 const WORLDS={
  forest:{name:'Zümrüt Orman',eyebrow:'BİRİNCİ DÜNYA',text:'Kadim ağaçların fısıltıları arasında kendi disiplinini keşfet.',icon:'🌿',css:'',chapter:'Kayıp Tohumlar'},
  desert:{name:'Kumların Mührü',eyebrow:'İKİNCİ DÜNYA',text:'Unutulan mühürlerin izinde yeni bir yol çiz.',icon:'☀',css:'desert',chapter:'Mührün Fısıltısı'},
@@ -174,6 +175,14 @@ function coachView(key){
   <p class="muted" style="line-height:1.6">Durum: <strong>${esc(localAiStatus)}</strong>.
   0,5B boyutunda GGUF bir model seçtiğinde sohbeti yalnız cihazında çalıştırabilirsin.
   Model içe aktarılmadığında eski kural tabanlı koç kullanılır.</p>
+  <div class="notice" style="margin-bottom:10px">
+  <strong>Önerilen: Qwen2.5-0.5B-Instruct · Q4_K_M (491 MB)</strong>
+  <p class="muted" style="font-size:12px;line-height:1.6;margin:6px 0 0">1. İnternete bağlıyken model dosyasını indir.
+  2. İndirme tamamlanınca <strong>Cihazdan GGUF model seç</strong> deyip İndirilenler klasöründeki <code>.gguf</code> dosyasını aç.
+  3. Kopyalama ve model yükleme işlemi tamamlanınca AI Koç'u çevrimdışı kullan.</p>
+  </div>
+  <button class="button mint wide" data-action="downloadLocalModel" type="button">⬇ GGUF modelini indir (Hugging Face)</button>
+  <div style="height:7px"></div>
   <button class="button secondary wide" data-action="importLocalModel" type="button">Cihazdan GGUF model seç</button>
   <div style="height:7px"></div><button class="button secondary wide" data-action="loadLocalModel" type="button">Kaydedilmiş yerel modeli aç</button>
   <p class="muted" style="font-size:11px">Büyük model dosyaları RAM ve batarya tüketir. Model cihazın özel alanında saklanır; veriler internete gönderilmez.</p></div>
@@ -287,6 +296,10 @@ view.addEventListener('click',ev=>{
   }
   if(action==='world')update(Core.setWorld(state,btn.dataset.world),'Dünya seçildi.');
   if(action==='ask')ask(btn.dataset.question);
+  if(action==='downloadLocalModel'){
+    if(window.AndroidAI&&typeof window.AndroidAI.openModelDownload==='function')window.AndroidAI.openModelDownload();
+    else window.open(GGUF_DOWNLOAD_URL,'_blank','noopener,noreferrer');
+  }
   if(action==='importLocalModel'){
    if(!window.AndroidAI)throw new Error('Bu Android sürümünde yerel AI desteği bulunmuyor.');
    const replace=localAiStatus!=='none'&&localAiStatus!=='unavailable';

@@ -21,6 +21,7 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
   private static final int OPEN_BACKUP=401, SAVE_BACKUP=402, IMPORT_MODEL=403, MAX_BACKUP=4*1024*1024;
+  private static final String GGUF_DOWNLOAD_URL="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
   private static final String RELEASE_API="https://api.github.com/repos/huseyinozcanasta/Yolculuk66/releases?per_page=5";
   private static final String RELEASE_PREFIX="https://github.com/huseyinozcanasta/yolculuk66/releases/";
   private WebView webView;
@@ -61,6 +62,15 @@ public final class MainActivity extends Activity {
     callback("window.showNativeMessage("+JSONObject.quote(text)+");");
   }
   public final class AIModelBridge {
+    @JavascriptInterface public void openModelDownload() {
+      // Explicit tap only. No user save data is sent, and the URL is fixed at build time.
+      runOnUiThread(()->{
+        Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(GGUF_DOWNLOAD_URL));
+        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        try {startActivity(intent);}
+        catch(ActivityNotFoundException ex){message("Model indirme bağlantısını açacak tarayıcı bulunamadı.");}
+      });
+    }
     @JavascriptInterface public String status() {
       return aiHost!=null?aiHost.status():"unavailable";
     }

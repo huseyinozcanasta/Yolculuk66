@@ -32,3 +32,7 @@ CI: [GitHub Actions](https://github.com/huseyinozcanasta/Yolculuk66/actions). An
 **UyarÄ±:** GitHub Actions'Ä±n varsayÄ±lan debug APK'sÄ± CI makinesinin anahtarÄ±yla imzalanÄ±r ve eski sÃ¼rÃ¼m Ã¼zerine kurulamaz. KullanÄ±cÄ±ya sunulan test gÃ¼ncellemesi eski v0.3.1 ile aynÄ± imzaya sahip olacak ÅŸekilde ayrÄ±ca imzalanÄ±p doÄŸrulanmalÄ±dÄ±r. Ã–zel imza anahtarÄ± hiÃ§bir zaman depoya yÃ¼klenmez. Eski uygulamayÄ± kaldÄ±rmadan Ã¶nce ÅŸifreli yedek alÄ±n.
 
 ÃœÃ§Ã¼ncÃ¼ taraf kÃ¼tÃ¼phane ve model lisanslarÄ± sahiplerine aittir. UygulamanÄ±n tÃ¼m kaynak kodu iÃ§in ayrÄ±ca bir lisans beyanÄ± yapÄ±lmÄ±ÅŸ deÄŸildir.
+
+## v0.3.5 ÔÇö Resm+« GGUF model indirme ba¦þlant¦-s¦-
+AI Ko+ð ekran¦-na Qwen2.5-0.5B-Instruct Q4_K_M i+ðin yakla+þ¦-k 491 MB'l¦-k resm+« dosyan¦-n indirme d+-¦þmesi eklendi: https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf . Yaln¦-z t¦-klan¦-nca Android taray¦-c¦-s¦- a+ð¦-l¦-r; otomatik indirme yoktur. ¦-ndirdikten sonra AI Ko+ð > Cihazdan GGUF model se+ð > ¦-ndirilenler klas+Âr+-ndeki GGUF > Kaydedilmi+þ yerel modeli a+ð. Model, Hugging Face'den gelir; sohbet ve al¦-+þkanl¦-k kay¦-tlar¦- internete g+Ânderilmez. Ger+ðek cihazda modelden yan¦-t +-retme do¦þrulamas¦- devam ediyor.
+
