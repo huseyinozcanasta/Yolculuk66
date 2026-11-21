@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#10142d">
+  <title>Yolculuk 66 · Çevrimdışı RPG</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">✦</div><div><strong>YOLCULUK<span>66</span></strong><small>KENDİ HİKÂYENİ YAZ</small></div></div>
+      <div class="offline"><span class="online-dot"></span> ÇEVRİMDIŞI</div>
+    </header>
+    <main id="view" class="view" aria-live="polite"></main>
+    <nav class="bottom-nav" aria-label="Ana menü">
+      <button type="button" data-tab="today" class="nav-item selected"><span class="nav-icon">⌂</span><span>Bugün</span></button>
+      <button type="button" data-tab="tasks" class="nav-item"><span class="nav-icon">☷</span><span>Görevler</span></button>
+      <button type="button" data-tab="journey" class="nav-item"><span class="nav-icon">♜</span><span>Yolculuk</span></button>
+      <button type="button" data-tab="analysis" class="nav-item"><span class="nav-icon">▥</span><span>Analiz</span></button>
+      <button type="button" data-tab="coach" class="nav-item"><span class="nav-icon">✧</span><span>AI Koç</span></button>
+    </nav>
+  </div>
+
+  <dialog id="taskDialog" class="modal">
+    <form id="taskForm" method="dialog" class="modal-content">
+      <div class="modal-head"><h2>Yeni alışkanlık</h2><button type="button" class="icon-button" data-close aria-label="Kapat">✕</button></div>
+      <label for="taskName">Görev adı</label>
+      <input id="taskName" name="name" type="text" minlength="2" maxlength="80" placeholder="Örn. 15 dakika kitap oku" required autocomplete="off">
+      <label for="taskDifficulty">Zorluk</label>
+      <select id="taskDifficulty" name="difficulty"><option value="easy">Kolay · 10 XP</option><option value="medium" selected>Orta · 20 XP</option><option value="hard">Zor · 35 XP</option></select>
+      <label class="check-row"><input id="taskCore" name="core" type="checkbox"> <span><strong>Ana alışkanlığım</strong><small>Başarılı gün için tüm ana alışkanlıkların bitmeli. En fazla 3.</small></span></label>
+      <div class="modal-actions"><button type="button" class="button secondary" data-close>Vazgeç</button><button type="submit" class="button primary">Görevi ekle</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="backupDialog" class="modal">
+    <form id="backupForm" class="modal-content">
+      <div class="modal-head"><h2>Şifreli yedek oluştur</h2><button type="button" class="icon-button" data-close aria-label="Kapat">✕</button></div>
+      <p class="muted">Ana oyun kayıtların AES-256-GCM ile şifrelenir. Parolanı kaybetme ihtimaline karşı isteğe bağlı tek kullanımlık gösterilen kurtarma kodu oluşturabilirsin. Kodun kopyası uygulamada saklanmaz.</p>
+      <label for="backupPassword">Yedek parolası (en az 10 karakter)</label>
+      <input id="backupPassword" type="password" name="password" autocomplete="new-password" minlength="10" maxlength="256" required>
+      <label for="backupPasswordRepeat">Parola tekrar</label>
+      <input id="backupPasswordRepeat" type="password" name="repeat" autocomplete="new-password" minlength="10" maxlength="256" required>
+      <label class="check-row"><input type="checkbox" name="recovery" checked> <span><strong>Çevrimdışı kurtarma kodu oluştur</strong><small>Parolayı unutursan yedeği açabilmen için ayrı ve güvenli bir yerde sakla.</small></span></label>
+      <div class="modal-actions"><button type="button" class="button secondary" data-close>Vazgeç</button><button type="submit" class="button primary">Şifrele ve kaydet</button></div>
+    </form>
+  </dialog>
+  <dialog id="recoveryDialog" class="modal">
+    <form id="recoveryForm" class="modal-content" autocomplete="off">
+      <div class="modal-head"><h2>Kurtarma kodunu güvenle sakla</h2><button type="button" class="icon-button" data-close aria-label="Kapat">✕</button></div>
+      <p class="muted">Bu kod <strong>yalnızca şimdi gösterilir.</strong> Başka bir yerde çevrimdışı sakla; ekran görüntüsü veya mesajlaşma uygulaması yerine güvenli bir yöntem seç. Kod yedek dosyasının içinde yer almaz.</p>
+      <div class="recovery-code" id="recoveryCodeOutput" aria-label="Bir kez gösterilen kurtarma kodu"></div>
+      <label for="recoveryConfirm">Sakladığın kodu aynen tekrar gir</label>
+      <input id="recoveryConfirm" name="confirmationCode" type="text" minlength="32" maxlength="48" required spellcheck="false" autocapitalize="characters" autocomplete="off" placeholder="8 karakterlik dört grup">
+      <p class="muted">Kodla şifreli yedeği gerçekten açma testi yapılır. Test geçmeden dosya kaydedilmez.</p>
+      <div class="modal-actions"><button type="button" class="button secondary" data-close>İptal</button><button type="submit" class="button mint">Doğrula ve kaydet</button></div>
+    </form>
+  </dialog>
+  <dialog id="restoreDialog" class="modal">
+    <form id="restoreForm" class="modal-content">
+      <div class="modal-head"><h2>Yedeği geri yükle</h2><button type="button" class="icon-button" data-close aria-label="Kapat">✕</button></div>
+      <p class="muted">Dosya yalnızca doğru parola ile açılır. Cihazdaki kayıtların değiştirilmesi durumunda önce yerel koruma kopyası oluşturulur.</p>
+      <label for="restoreMethod">Geri açma yöntemi</label>
+      <select id="restoreMethod" name="method"><option value="password">Parola</option><option value="recovery">Kurtarma kodu (yeni yedekler)</option></select>
+      <label for="restorePassword">Parola veya kurtarma kodu</label>
+      <input id="restorePassword" type="password" name="password" autocomplete="off" maxlength="256" required>
+      <div class="modal-actions"><button type="button" class="button secondary" data-close>Vazgeç</button><button type="submit" class="button primary">Önizle</button></div>
+    </form>
+  </dialog>
+  <input id="backupFile" type="file" accept=".y66backup,.json,application/json" hidden>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="core.js"></script><script src="backup.js"></script><script src="story.js"></script><script src="updates.js"></script><script src="app.js"></script>
+</body>
+</html>
