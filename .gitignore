@@ -16,3 +16,4 @@ patch-native.cjs
 patch-ci.cjs
 local-artifacts/
 patch-coach.cjs
+patch-release-list.cjs

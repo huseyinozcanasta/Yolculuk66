@@ -177,7 +177,7 @@ async function checkUpdates(){
    return;
   }
   const destination=result.apkUrl||result.releaseUrl;
-  if(window.confirm('Yeni sürüm: v'+result.latestVersion+'\nKurulum sayfasını açmak ister misin? Kaydedilmiş verilerin silinmez.')){
+  if(window.confirm('Yeni sürüm: v'+result.latestVersion+(result.isPrerelease?' (TEST SÜRÜMÜ)':'')+'\nKurulum sayfasını açmak ister misin? Önce şifreli yedek almanı öneririz.')){
    if(window.AndroidUpdates&&typeof window.AndroidUpdates.openUrl==='function')window.AndroidUpdates.openUrl(destination);
    else window.open(destination,'_blank','noopener');
   }

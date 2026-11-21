@@ -56,3 +56,22 @@ test('offline failures do not become false update claims', async () => {
   const fakeFetch = async () => {throw new Error('offline');};
   await assert.rejects(Updates.checkForUpdates(fakeFetch,'0.3.1'), /bağlantı|kontrol/i);
 });
+
+test('release list discovers newer pre-release without selecting drafts',async()=>{
+ const payload=[
+   {tag_name:'v0.9.0',draft:true,prerelease:false,assets:[],html_url:'https://github.com/huseyinozcanasta/Yolculuk66/releases/tag/v0.9.0'},
+   {tag_name:'v0.3.2',draft:false,prerelease:true,assets:[],html_url:'https://github.com/huseyinozcanasta/Yolculuk66/releases/tag/v0.3.2'},
+   {tag_name:'v0.3.3',draft:false,prerelease:true,
+     assets:[{name:'Yolculuk66-v0.3.3.apk',browser_download_url:'https://github.com/huseyinozcanasta/Yolculuk66/releases/download/v0.3.3/Yolculuk66-v0.3.3.apk'}],
+     html_url:'https://github.com/huseyinozcanasta/Yolculuk66/releases/tag/v0.3.3'}
+ ];
+ const result=await Updates.checkForUpdates(async()=>({ok:true,json:async()=>payload}),'0.3.2');
+ assert.equal(result.latestVersion,'0.3.3');
+ assert.equal(result.isPrerelease,true);
+ assert.equal(result.status,'available');
+ assert.match(Updates.RELEASE_API,/\/releases\?per_page=/);
+});
+test('a release list with no public versions fails explicitly',async()=>{
+ const mock=async()=>({ok:true,json:async()=>[{tag_name:'v0.9.0',draft:true}]});
+ await assert.rejects(Updates.checkForUpdates(mock,'0.3.2'),/sürüm|yayın/i);
+});

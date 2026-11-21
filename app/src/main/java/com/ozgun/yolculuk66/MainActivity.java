@@ -21,7 +21,7 @@ import java.util.Locale;
 
 public final class MainActivity extends Activity {
   private static final int OPEN_BACKUP=401, SAVE_BACKUP=402, MAX_BACKUP=4*1024*1024;
-  private static final String RELEASE_API="https://api.github.com/repos/huseyinozcanasta/Yolculuk66/releases/latest";
+  private static final String RELEASE_API="https://api.github.com/repos/huseyinozcanasta/Yolculuk66/releases?per_page=5";
   private static final String RELEASE_PREFIX="https://github.com/huseyinozcanasta/yolculuk66/releases/";
   private WebView webView;
   private String pendingBackup;
@@ -95,7 +95,7 @@ public final class MainActivity extends Activity {
           try(InputStream in=conn.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){
   byte[] b=new byte[8192];int n;
             while((n=in.read(b))!=-1){
-              if(out.size()+n>65536)throw new IllegalStateException("Oversized release.");
+              if(out.size()+n>262144)throw new IllegalStateException("Oversized release.");
               out.write(b,0,n);
             }
             String data=new String(out.toByteArray(),StandardCharsets.UTF_8);

@@ -7,7 +7,7 @@
   'use strict';
   const CURRENT_VERSION = '0.3.3';
   const REPO = 'huseyinozcanasta/Yolculuk66';
-  const RELEASE_API = 'https://api.github.com/repos/' + REPO + '/releases/latest';
+  const RELEASE_API = 'https://api.github.com/repos/' + REPO + '/releases?per_page=5';
   const RELEASES_URL = 'https://github.com/' + REPO + '/releases';
 
   function versionParts(value) {
@@ -64,15 +64,25 @@
     let data;
     try { data = await response.json(); }
     catch (_) { throw new Error('Güncelleme bilgisi okunamadı.'); }
-    const latestVersion = String(data.tag_name || '').trim().replace(/^v/i, '');
+    const releases = Array.isArray(data) ? data : [data];
+    const published = releases.filter(item => {
+      if (!item || item.draft) return false;
+      try { versionParts(item.tag_name); return true; }
+      catch (_) { return false; }
+    });
+    if (!published.length) throw new Error('Henüz yayımlanmış sürüm bulunamadı.');
+    published.sort((a,b)=>compareVersions(b.tag_name,a.tag_name));
+    const release = published[0];
+    const latestVersion = String(release.tag_name).trim().replace(/^v/i, '');
     const installed = installedVersion || CURRENT_VERSION;
     const hasUpdate = compareVersions(latestVersion, installed) > 0;
     return {
       status: hasUpdate ? 'available' : 'current',
       currentVersion: installed,
       latestVersion,
-      releaseUrl: trustedReleaseUrl(data.html_url),
-      apkUrl: hasUpdate ? trustedApkUrl(data.assets) : null
+      isPrerelease: !!release.prerelease,
+      releaseUrl: trustedReleaseUrl(release.html_url),
+      apkUrl: hasUpdate ? trustedApkUrl(release.assets) : null
     };
   }
   return {CURRENT_VERSION, RELEASE_API, RELEASES_URL, compareVersions, checkForUpdates};
