@@ -169,14 +169,23 @@ function coachReply(question,key){
  return 'Seni çevrimdışı destekliyorum. “Bugün ne yapayım?”, “XP durumum” veya “Serim kaç gün?” gibi sorulara mevcut kayıtlarına göre yanıt verebilirim.';
 }
 function coachView(key){
+ const modelStatusLabel={
+  none:'Model henüz seçilmedi',
+  imported:'Kaydedildi — açılmayı bekliyor',
+  loading:'Model açılıyor',
+  importing:'Model cihazına kopyalanıyor',
+  ready:'Hazır — gerçek AI etkin',
+  unavailable:'Bu cihazda kullanılamıyor'
+ }[localAiStatus]||localAiStatus;
  const suggestion=coachReply('bugün ne yapayım',key);
  const coachCTA=Core.activeTasks(state).length?'':'<button class="button secondary wide" data-action="newTask" type="button" style="margin-top:10px">+ İlk alışkanlığımı ekle</button>';
  return `<div class="page-title">AI KOÇ</div><p class="page-subtitle">Yolculuğunda sana eşlik eden kişisel ilerleme yardımcın.</p>
   <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">${localAiStatus==='ready'?'Gerçek GGUF dil modeli etkin. Sohbet yanıtlarını cihazında kendisi üretiyor ve oyun bilgilerini kullanıyor.':'Yerel dil modeli henüz hazır değil. Modeli açana kadar yalnızca sınırlı, kural tabanlı yerel koç kullanılabilir.'}</p></div>
   <div class="card"><h3>🧠 Gerçek çevrimdışı AI (isteğe bağlı)</h3>
-  <p class="muted" style="line-height:1.6">Durum: <strong>${esc(localAiStatus)}</strong>.
+  <p class="muted" style="line-height:1.6">Durum: <strong>${esc(modelStatusLabel)}</strong>.
   Model yüklüyse sorularını cihazındaki gerçek dil modeli yanıtlar. Hazır cevaplar yerine konuşma geçmişini ve oyun verilerini dikkate alır.
   Model içe aktarılmadığında eski kural tabanlı koç kullanılır.</p>
+  ${localAiStatus==='imported'?'<p class="notice">Model zaten cihazına kaydedilmiş. AI kullanmaya başlamak için aşağıdaki <strong>Kaydedilmiş yerel modeli aç</strong> düğmesine bas. Başka model seçmek istersen eski model korunarak onay penceresi açılacak.</p>':''}
   <div class="notice" style="margin-bottom:10px">
   <strong>Daha güçlü: Qwen2.5-1.5B-Instruct · Q4_K_M (yaklaşık 1,07 GB)</strong><p class="muted" style="font-size:12px;margin-top:6px">Daha iyi Türkçe konuşma için önerilir; daha çok RAM ve depolama alanı ister.</p>
   <p class="muted" style="font-size:12px;line-height:1.6;margin:6px 0 0">1. İnternete bağlıyken model dosyasını indir.
@@ -324,8 +333,8 @@ view.addEventListener('click',ev=>{
   if(action==='importLocalModel'){
    if(!window.AndroidAI)throw new Error('Bu Android sürümünde yerel AI desteği bulunmuyor.');
    const replace=localAiStatus!=='none'&&localAiStatus!=='unavailable';
-   if(!replace||window.confirm('Önceki GGUF modelini değiştirmek istiyor musun? Koruma kopyası saklanır.'))
-    window.AndroidAI.chooseModel(replace);
+   // Onay Android'in kendi penceresinde gösterilir. WebView JS confirm kullanma.
+   window.AndroidAI.chooseModel(replace);
   }
   if(action==='loadLocalModel'){
    if(!window.AndroidAI)throw new Error('Yerel AI köprüsü bulunmuyor.');

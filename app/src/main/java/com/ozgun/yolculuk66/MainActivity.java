@@ -1,11 +1,14 @@
 package com.ozgun.yolculuk66;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -48,6 +51,20 @@ public final class MainActivity extends Activity {
         return !("file".equals(uri.getScheme()) && "/android_asset/index.html".equals(uri.getPath()));
       }
     });
+    webView.setWebChromeClient(new WebChromeClient(){
+      @Override public boolean onJsConfirm(WebView view,String url,String prompt,JsResult result){
+        if(url==null||!url.startsWith("file:///android_asset/")){
+          result.cancel();return true;
+        }
+        new AlertDialog.Builder(MainActivity.this)
+          .setMessage(prompt)
+          .setPositiveButton("Onayla",(dlg,w)->result.confirm())
+          .setNegativeButton("Vazgeç",(dlg,w)->result.cancel())
+          .setOnCancelListener(dlg->result.cancel())
+          .show();
+        return true;
+      }
+    });
     webView.addJavascriptInterface(new FilesBridge(),"AndroidFiles");
     webView.addJavascriptInterface(new UpdatesBridge(),"AndroidUpdates");
     aiHost=new OfflineAiHost(this, (kind,payload) ->
@@ -61,6 +78,14 @@ public final class MainActivity extends Activity {
   }
   private void message(String text) {
     callback("window.showNativeMessage("+JSONObject.quote(text)+");");
+  }
+  private void openModelPicker(boolean allowReplace) {
+    modelReplaceAllowed=allowReplace;
+    Intent choose=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+    choose.setType("*/*");
+    choose.addCategory(Intent.CATEGORY_OPENABLE);
+    try {startActivityForResult(choose,IMPORT_MODEL);}
+    catch(ActivityNotFoundException ex){message("Model dosya seçicisi bulunamadı.");}
   }
   public final class AIModelBridge {
     @JavascriptInterface public void openModelDownload() {
@@ -85,12 +110,19 @@ public final class MainActivity extends Activity {
     }
     @JavascriptInterface public void chooseModel(boolean allowReplace) {
       runOnUiThread(()->{
-        modelReplaceAllowed=allowReplace;
-        Intent choose=new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        choose.setType("*/*");
-        choose.addCategory(Intent.CATEGORY_OPENABLE);
-        try {startActivityForResult(choose,IMPORT_MODEL);}
-        catch(ActivityNotFoundException ex){message("Model dosya seçicisi bulunamadı.");}
+        if(allowReplace){
+          new AlertDialog.Builder(MainActivity.this)
+            .setTitle("GGUF modeli zaten kayıtlı")
+            .setMessage("Mevcut model cihazında saklı. Onu çalıştırabilir veya yeni bir GGUF dosyası seçebilirsin. Eski model, yenisi doğrulanana kadar korunur.")
+            .setNegativeButton("Vazgeç",(dlg,w)->{})
+            .setNeutralButton("Mevcut modeli aç",(dlg,w)->{
+              if(aiHost!=null)aiHost.loadModel();
+            })
+            .setPositiveButton("Yeni model seç",(dlg,w)->openModelPicker(true))
+            .show();
+        } else {
+          openModelPicker(false);
+        }
       });
     }
     @JavascriptInterface public void loadModel() {
@@ -168,8 +200,11 @@ public final class MainActivity extends Activity {
   @Override protected void onActivityResult(int requestCode,int resultCode,Intent data) {
     super.onActivityResult(requestCode,resultCode,data);
     if(requestCode==IMPORT_MODEL) {
-      if(resultCode==RESULT_OK&&data!=null&&data.getData()!=null&&aiHost!=null)
+      if(resultCode!=RESULT_OK||data==null||data.getData()==null){
+        message("Dosya seçimi iptal edildi.");
+      } else if(aiHost!=null) {
         aiHost.importModel(data.getData(),modelReplaceAllowed);
+      }
       return;
     }
     if(requestCode==SAVE_BACKUP){

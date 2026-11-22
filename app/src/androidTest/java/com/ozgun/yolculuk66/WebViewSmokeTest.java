@@ -14,6 +14,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -89,6 +94,18 @@ public final class WebViewSmokeTest {
       "'Bu uygulama hakkında neler biliyorsun?','Size nasıl yardımcı olabilirim?',HabitCore.dayKey());" +
       "r.needsRetry && r.reply===null"
     ));
+  }
+
+  @Test public void importedModelSelectionShowsWorkingNativeConfirmation() throws Exception {
+    awaitAppReady();
+    assertEquals("true",javascript(
+      "document.querySelector('[data-tab=\"coach\"]').click();" +
+      "window.onLocalAIEvent('status','imported|GGUF kaydedildi');" +
+      "document.querySelector('[data-action=\"importLocalModel\"]').click();" +
+      "true"
+    ));
+    onView(withText("GGUF modeli zaten kayıtlı")).check(matches(isDisplayed()));
+    onView(withText("Vazgeç")).perform(click());
   }
 
   @Test public void savedHabitSurvivesAndroidActivityRestart() throws Exception {
