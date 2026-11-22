@@ -2,6 +2,8 @@ package com.ozgun.yolculuk66
 
 import android.content.Context
 import android.net.Uri
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -105,9 +107,13 @@ class OfflineAiHost(private val context: Context, private val listener: Listener
                     throw IllegalStateException("Önce GGUF modelini telefondan seç.")
                 statusUpdate("loading", "Yerel dil modeli açılıyor…")
                 val loaded = LlamaModel.load(modelFile.absolutePath) {
-                    contextSize = 1024
-                    threads = 2
-                    maxTokens = 160
+                    contextSize = 3072
+                    threads = 4
+                    maxTokens = 320
+                    temperature = 0.6f
+                    topP = 0.9f
+                    repeatPenalty = 1.18f
+                    stopSequences = listOf("<|im_end|>", "<|endoftext|>")
                     gpuLayers = 0
                     useMmap = true
                 }
@@ -133,21 +139,39 @@ class OfflineAiHost(private val context: Context, private val listener: Listener
         }
         scope.launch {
             try {
-                val prompt = buildString {
-                    append("<|im_start|>system\n")
-                    append("Sen Yolculuk 66 uygulamasının Türkçe kişisel alışkanlık koçusun. ")
-                    append("Yalnız verilen yerel oyun kayıtlarına dayan; geçmiş veya sonuç uydurma. ")
-                    append("Kısa, uygulanabilir öneriler ver. XP ve görevleri değiştiremezsin. ")
-                    append("Kullanıcının sorusuna Türkçe, somut ve doğrudan cevap ver. ")
-                    append("Nasıl yardımcı olabilirim gibi genel kalıpları tekrarlama. ")
-                    append("Kayıtlı görev yoksa bunu açıkça belirt ve küçük bir görev oluşturmasını öner.")
-                    append("<|im_end|>\n<|im_start|>user\n")
-                    append("Yerel ilerleme özeti: ")
-                    append(localContext.take(800))
-                    append("\nKullanıcı: ")
-                    append(question.take(350))
-                    append("<|im_end|>\n<|im_start|>assistant\n")
+                val data = JSONObject(localContext)
+                val facts = data.optString("app").take(900)
+                val game = data.optString("game").take(1500)
+                val messages = JSONArray()
+                val systemInstruction = buildString {
+                    append("Sen Yolculuk 66 Android uygulamasında cihazda çalışan Türkçe bir sohbet modelisin. ")
+                    append("Kullanıcının sorusuna doğrudan, anlaşılır ve konuyla ilgili cevap ver. ")
+                    append("Hazır selamlama, konu dışı eğitim/iş bilgisi, kendini tekrar ve genel yardım teklifi üretme. ")
+                    append("Yolculuk 66 hakkında sorulursa yalnız uygulama bilgilerini kullan. ")
+                    append("Kullanıcının yerel oyun kayıtlarını ve sohbet geçmişini bağlam olarak kullanabilirsin; ")
+                    append("bilinmeyen oyun kayıtlarını veya uygulama özelliklerini uydurma. ")
+                    append("XP, görev ve kayıtları değiştiremezsin. Kişisel verileri cihaz dışına gönderme. ")
+                    append("\nUYGULAMA HAKKINDA DOĞRULANMIŞ BİLGİLER:\n")
+                    append(facts)
+                    append("\nCİHAZDAKİ GÜNCEL OYUN DURUMU:\n")
+                    append(game)
                 }
+                messages.put(JSONObject().put("role", "system").put("content", systemInstruction))
+                val history = data.optJSONArray("history")
+                if (history != null) {
+                    val first = (history.length() - 6).coerceAtLeast(0)
+                    for (i in first until history.length()) {
+                        val item = history.optJSONObject(i) ?: continue
+                        val role = item.optString("role")
+                        if (role != "user" && role != "assistant") continue
+                        val content = item.optString("content").take(220)
+                        if (content.isNotBlank())
+                            messages.put(JSONObject().put("role", role).put("content", content))
+                    }
+                }
+                messages.put(JSONObject().put("role", "user").put("content", question.take(500)))
+                // The actual model's embedded GGUF chat template determines token formatting.
+                val prompt = active.applyChatTemplate(messages.toString(), true)
                 val result = active.generate(prompt).trim().take(2500)
                 notify("reply", if (result.isBlank()) "Model henüz yanıt üretemedi." else result)
             } catch (e: Exception) {

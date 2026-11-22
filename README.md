@@ -40,3 +40,7 @@ AI Ko+ð ekran¦-na Qwen2.5-0.5B-Instruct Q4_K_M i+ðin yakla+þ¦-k 491 MB'l¦-k resm
 ## v0.3.6 ÔÇö AI Coach response grounding
 Questions about today's plan, XP, tasks, streaks, and weekly progress are answered deterministically from the on-device game records. Greetings and empty-task states are handled locally. The user can add a first habit directly from the coach screen. Open-ended questions still use the optional GGUF model; generic or unhelpful model answers fall back to local coaching. The model prompt requests direct, grounded Turkish answers. No gameplay data is sent to a server.
 
+
+## v0.3.7 - Generative local AI coaching
+An imported GGUF model now responds to every question directly, using a model-specific chat template, verifiable app capabilities, current local game history and up to six recent chat turns. The model has a 3072-token context, 320-token response, temperature/top-p controls, repetition penalty, and 4 CPU threads. The old canned-answer routing is disabled when a model is ready. The optional official Qwen2.5-1.5B-Instruct Q4_K_M download link (about 1.07 GB) is available alongside the older 0.5B model. If model output is generic or invalid, the UI reports that transparently rather than pretending the answer was generated. All game and chat context stays on-device. No real-phone inference acceptance yet; keep this version as an experimental prerelease.
+

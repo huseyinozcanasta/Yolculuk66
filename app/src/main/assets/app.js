@@ -172,24 +172,25 @@ function coachView(key){
  const suggestion=coachReply('bugün ne yapayım',key);
  const coachCTA=Core.activeTasks(state).length?'':'<button class="button secondary wide" data-action="newTask" type="button" style="margin-top:10px">+ İlk alışkanlığımı ekle</button>';
  return `<div class="page-title">AI KOÇ</div><p class="page-subtitle">Yolculuğunda sana eşlik eden kişisel ilerleme yardımcın.</p>
-  <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">Bu ilk sürümde koç, cihazındaki verilere dayanan <strong>kural tabanlı</strong> bir yardımcıdır. ${localAiStatus==='ready'?'İçe aktarılan GGUF dil modeli etkin. Yanıtlar cihazında üretilir.':'Gerçek dil modeli henüz etkin değil; hazır olduğunda cihazında çalışacaktır.'}</p></div>
+  <div class="card"><div class="coach-avatar">◕‿◕</div><div class="coach-label">● ÇEVRİMDIŞI · YEREL</div><p style="text-align:center;font-size:12px;line-height:1.7;color:#cbd1e9">${localAiStatus==='ready'?'Gerçek GGUF dil modeli etkin. Sohbet yanıtlarını cihazında kendisi üretiyor ve oyun bilgilerini kullanıyor.':'Yerel dil modeli henüz hazır değil. Modeli açana kadar yalnızca sınırlı, kural tabanlı yerel koç kullanılabilir.'}</p></div>
   <div class="card"><h3>🧠 Gerçek çevrimdışı AI (isteğe bağlı)</h3>
   <p class="muted" style="line-height:1.6">Durum: <strong>${esc(localAiStatus)}</strong>.
-  0,5B boyutunda GGUF bir model seçtiğinde sohbeti yalnız cihazında çalıştırabilirsin.
+  Model yüklüyse sorularını cihazındaki gerçek dil modeli yanıtlar. Hazır cevaplar yerine konuşma geçmişini ve oyun verilerini dikkate alır.
   Model içe aktarılmadığında eski kural tabanlı koç kullanılır.</p>
   <div class="notice" style="margin-bottom:10px">
-  <strong>Önerilen: Qwen2.5-0.5B-Instruct · Q4_K_M (491 MB)</strong>
+  <strong>Daha güçlü: Qwen2.5-1.5B-Instruct · Q4_K_M (yaklaşık 1,07 GB)</strong><p class="muted" style="font-size:12px;margin-top:6px">Daha iyi Türkçe konuşma için önerilir; daha çok RAM ve depolama alanı ister.</p>
   <p class="muted" style="font-size:12px;line-height:1.6;margin:6px 0 0">1. İnternete bağlıyken model dosyasını indir.
   2. İndirme tamamlanınca <strong>Cihazdan GGUF model seç</strong> deyip İndirilenler klasöründeki <code>.gguf</code> dosyasını aç.
   3. Kopyalama ve model yükleme işlemi tamamlanınca AI Koç'u çevrimdışı kullan.</p>
   </div>
-  <button class="button mint wide" data-action="downloadLocalModel" type="button">⬇ GGUF modelini indir (Hugging Face)</button>
+  <button class="button mint wide" data-action="downloadStrongModel" type="button">⬇ Daha güçlü 1,5B GGUF modelini indir</button>
+  <div style="height:7px"></div><button class="button secondary wide" data-action="downloadLocalModel" type="button">⬇ Hafif 0,5B GGUF modelini indir (491 MB)</button>
   <div style="height:7px"></div>
   <button class="button secondary wide" data-action="importLocalModel" type="button">Cihazdan GGUF model seç</button>
   <div style="height:7px"></div><button class="button secondary wide" data-action="loadLocalModel" type="button">Kaydedilmiş yerel modeli aç</button>
   <p class="muted" style="font-size:11px">Büyük model dosyaları RAM ve batarya tüketir. Model cihazın özel alanında saklanır; veriler internete gönderilmez.</p></div>
   <div class="card"><h3>✧ Bugünkü öneri</h3><div class="bubble">${esc(suggestion)}</div>${coachCTA}</div>
-  <div class="card"><h3>Koçla konuş</h3><div class="chat" id="chatLog"><div class="bubble">Merhaba! Hangi alışkanlığında ilerlemek istiyorsun?</div>${coachLog.map(m=>`<div class="bubble ${m.who==='user'?'user':''}">${esc(m.text)}</div>`).join('')}</div>
+  <div class="card"><h3>Koçla konuş</h3><div class="chat" id="chatLog"><div class="bubble">Sorunu yaz. Yerel dil modeli etkinse yanıtı cihazında oluşturur; oyun verileri internete gönderilmez.</div>${coachLog.map(m=>`<div class="bubble ${m.who==='user'?'user':''}">${esc(m.text)}</div>`).join('')}</div>
   <div class="suggestions"><button data-action="ask" data-question="Bugün ne yapayım?">Bugün ne yapayım?</button><button data-action="ask" data-question="XP durumum">XP durumum</button><button data-action="ask" data-question="Motivasyon lazım">Motivasyon</button><button data-action="ask" data-question="Bu hafta nasıldım?">Son 7 gün</button><button data-action="ask" data-question="Hangi görevde zorlandım?">Zorlandığım görev</button></div>
   <form id="chatForm" class="chat-form" style="margin-top:11px"><input name="question" type="text" maxlength="250" placeholder="Koça bir şey sor..." required><button class="button primary" type="submit">Gönder</button></form></div>`;
 }
@@ -241,15 +242,16 @@ function ask(question){
  const day=Core.dayKey();
  const canModel=localAiStatus==='ready'&&window.AndroidAI&&typeof window.AndroidAI.generate==='function';
  const decision=CoachRouter.route(state,question,day,canModel);
+ const context=CoachRouter.buildContext(state,day,coachLog);
  coachLog.push({who:'user',text:question});
  if(decision.mode==='model'){
   localAiBusy=true;
   coachLog.push({who:'bot',text:'Yerel dil modeli yanıt hazırlıyor…',pending:true,question:question});
-  try{window.AndroidAI.generate(question,decision.context);}
+  try{window.AndroidAI.generate(question,context);}
   catch(err){
    localAiBusy=false;
    coachLog.pop();
-   coachLog.push({who:'bot',text:CoachRouter.route(state,question,day,false).reply});
+   coachLog.push({who:'bot',text:'Yerel dil modeli teknik bir hata nedeniyle yanıt üretemedi. Modeli yeniden açıp tekrar sorabilirsin.'});
    toast('Yerel model çalıştırılamadı; kayıtlarına göre öneri gösterildi.');
   }
  }else{
@@ -273,9 +275,9 @@ window.onLocalAIEvent=function(kind,payload){
     const question=coachLog[index].question;
     const result=kind==='reply'
       ?CoachRouter.acceptModelReply(state,question,payload,Core.dayKey())
-      :{reply:CoachRouter.route(state,question,Core.dayKey(),false).reply,usedFallback:true};
-    coachLog[index]={who:'bot',text:result.reply};
-    if(kind==='reply'&&result.usedFallback)toast('Yanıt çok genel kaldı; kayıtlarına göre yerel öneri gösterildi.');
+      :{reply:null,needsRetry:true};
+    coachLog[index]={who:'bot',text:result.needsRetry?'Model bu soruya yeterli yanıt üretemedi. Daha güçlü GGUF modelini seçip tekrar deneyebilirsin.':result.reply};
+    if(kind==='reply'&&result.needsRetry)toast('Modelin yanıtı yetersiz kaldı; hazır cevap gösterilmedi.');
    }
   }
  }
@@ -310,6 +312,11 @@ view.addEventListener('click',ev=>{
   }
   if(action==='world')update(Core.setWorld(state,btn.dataset.world),'Dünya seçildi.');
   if(action==='ask')ask(btn.dataset.question);
+  if(action==='downloadStrongModel'){
+   if(window.AndroidAI&&typeof window.AndroidAI.openStrongerModelDownload==='function')
+     window.AndroidAI.openStrongerModelDownload();
+   else window.open('https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf','_blank','noopener,noreferrer');
+  }
   if(action==='downloadLocalModel'){
     if(window.AndroidAI&&typeof window.AndroidAI.openModelDownload==='function')window.AndroidAI.openModelDownload();
     else window.open(GGUF_DOWNLOAD_URL,'_blank','noopener,noreferrer');

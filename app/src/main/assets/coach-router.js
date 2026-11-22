@@ -49,24 +49,37 @@
   }
   return lines.join('\n').slice(0,760);
  }
+ function buildContext(state,today=Core.dayKey(),turns=[]){
+  // Facts, not pre-written answers. The on-device model composes the response.
+  const app='Yolculuk 66, 66 gün süren çevrimdışı alışkanlık/RPG Android uygulamasıdır. '
+    +'Bugün: görevleri planlama/tamamlama; Görevler: alışkanlık ekleme ve arşivleme; '
+    +'Yolculuk: dünya, hikâye ve ilerleme; Analiz: XP, seviye ve başarı serisi; '
+    +'AI Koç: isteğe bağlı cihaz üstünde GGUF dil modeli. '
+    +'Görevler XP verir (kolay 10, orta 20, zor 35). En fazla üç ana görev seçilebilir. '
+    +'Oyun kayıtları cihazın kendi alanında tutulur. Şifreli yedek ve kurtarma kodu vardır. '
+    +'Yalnız kullanıcı istediğinde sürüm kontrolü GitHub ile iletişim kurar. '
+    +'AI koç oyun kayıtlarını kendiliğinden değiştiremez; internette arama yapmaz.';
+  const game=localContext(state,today);
+  const history=Array.isArray(turns)?turns.filter(x=>x&&!x.pending&&(x.who==='user'||x.who==='bot')&&typeof x.text==='string')
+   .slice(-6).map(x=>({role:x.who==='user'?'user':'assistant',content:x.text.slice(0,200)})):[];
+  // Keep model prompt within Android bridge bounds and keep it entirely local.
+  const result=JSON.stringify({app,game,history});
+  return result.length<=4000?result:JSON.stringify({app,game:game.slice(0,600),history:history.slice(-3)});
+ }
  function route(state,question,today=Core.dayKey(),ready=false){
   const q=String(question||'').trim();
-  const context=localContext(state,today);
+  const context=buildContext(state,today,[]);
   if(!q)return {mode:'local',reply:'Bana bir soru yazabilirsin.',context};
-  if(!ready||isGreeting(q)||isFactualGameQuestion(q))
-   return {mode:'local',reply:localReply(state,q,today),context};
-  return {mode:'model',reply:null,context};
+  // No pattern-matched canned answers while real on-device LLM is ready.
+  if(ready)return {mode:'model',reply:null,context};
+  return {mode:'local',reply:localReply(state,q,today),context};
  }
- function acceptModelReply(state,question,text,today=Core.dayKey()){
-  const raw=String(text||'');
-  const clean=raw.replace(/<\|(?:im_start|im_end|endoftext|eot_id|start_header_id|end_header_id)\|>/g,' ')
-    .replace(/^\s*(assistant|asistan)\s*[:：]\s*/i,'').trim().slice(0,1400);
-  const generic=/yardımcı olama(?:m|yabilirim|yac[aı]ğım)|(?:size|sana|nasıl|ne konuda)\s+nasıl\s+yardımcı\s+olabilirim|nasıl\s+yardımcı\s+olabilirim|başka\s+bir\s+konuda\s+yardımcı/i.test(clean);
-  const boilerplate=/^merhaba[!. ]*\s*(size|sana)?\s*nasıl\s+yardımcı/i.test(clean);
-  if(clean.length<18||generic||boilerplate||!clean){
-    return {usedFallback:true,reply:localReply(state,question,today)};
-  }
-  return {usedFallback:false,reply:clean};
+ function acceptModelReply(_state,_question,text,_today=Core.dayKey()){
+  const clean=String(text||'').replace(/<\|(?:im_start|im_end|endoftext|eot_id|start_header_id|end_header_id)\|>/g,' ')
+    .replace(/^\s*(assistant|asistan)\s*[:：]\s*/i,'').trim().slice(0,2000);
+  const generic=/yardımcı olama(?:m|yabilirim|yac[aı]ğım)|nasıl\s+yardımcı\s+olabilirim|başka\s+bir\s+konuda\s+yardımcı/i.test(clean);
+  if(clean.length<18||generic)return {reply:null,needsRetry:true};
+  return {reply:clean,needsRetry:false};
  }
- return {route,localContext,acceptModelReply};
+ return {route,localContext,buildContext,acceptModelReply};
 });

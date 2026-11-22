@@ -22,6 +22,7 @@ import java.util.Locale;
 public final class MainActivity extends Activity {
   private static final int OPEN_BACKUP=401, SAVE_BACKUP=402, IMPORT_MODEL=403, MAX_BACKUP=4*1024*1024;
   private static final String GGUF_DOWNLOAD_URL="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf";
+  private static final String GGUF_STRONG_DOWNLOAD_URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf";
   private static final String RELEASE_API="https://api.github.com/repos/huseyinozcanasta/Yolculuk66/releases?per_page=5";
   private static final String RELEASE_PREFIX="https://github.com/huseyinozcanasta/yolculuk66/releases/";
   private WebView webView;
@@ -71,6 +72,14 @@ public final class MainActivity extends Activity {
         catch(ActivityNotFoundException ex){message("Model indirme bağlantısını açacak tarayıcı bulunamadı.");}
       });
     }
+    @JavascriptInterface public void openStrongerModelDownload() {
+      runOnUiThread(()->{
+        Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse(GGUF_STRONG_DOWNLOAD_URL));
+        intent.addCategory(Intent.CATEGORY_BROWSABLE);
+        try{startActivity(intent);}
+        catch(ActivityNotFoundException ex){message("Model indirme bağlantısını açacak tarayıcı bulunamadı.");}
+      });
+    }
     @JavascriptInterface public String status() {
       return aiHost!=null?aiHost.status():"unavailable";
     }
@@ -88,7 +97,7 @@ public final class MainActivity extends Activity {
       if(aiHost!=null)aiHost.loadModel();
     }
     @JavascriptInterface public void generate(String question,String localContext) {
-      if(question==null||question.length()>1000||localContext==null||localContext.length()>2400){
+      if(question==null||question.length()>1000||localContext==null||localContext.length()>4500){
         message("Yerel AI isteği çok uzun.");return;
       }
       if(aiHost!=null)aiHost.generate(question,localContext);

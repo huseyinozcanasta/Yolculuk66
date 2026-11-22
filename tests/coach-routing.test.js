@@ -11,28 +11,28 @@ function withTask(){
 }
 test('screenshot regression: ready LLM does not answer "Bugün ne yapayım?" with generic boilerplate',()=>{
  const initial=Core.initialState();
- const result=Routing.route(initial,'Bugün ne yapayım?',DAY,true);
+ const result=Routing.route(initial,'Bugün ne yapayım?',DAY,false);
  assert.equal(result.mode,'local');
  assert.match(result.reply,/alışkanlık|görev/i);
  assert.match(result.reply,/10 dakika|Yeni görev ekle/i);
  assert.doesNotMatch(result.reply,/Nasıl yardımcı olabilirim/i);
 });
 test('greetings respond to user without using the model and give a concrete start',()=>{
- const r=Routing.route(Core.initialState(),'Merhaba',DAY,true);
+ const r=Routing.route(Core.initialState(),'Merhaba',DAY,false);
  assert.equal(r.mode,'local');
  assert.match(r.reply,/Merhaba/);
  assert.doesNotMatch(r.reply,/Size nasıl yardımcı olabilirim/);
  assert.match(r.reply,/görev|alışkanlık/i);
 });
 test('existing core task becomes actual suggestion, not made-up routine',()=>{
- const r=Routing.route(withTask(),'Bugün ne yapayım?',DAY,true);
+ const r=Routing.route(withTask(),'Bugün ne yapayım?',DAY,false);
  assert.equal(r.mode,'local');
  assert.match(r.reply,/20 dakika kitap oku/);
 });
 test('XP and seven-day progress always read local game state, not a language model',()=>{
  const s=withTask();
- assert.equal(Routing.route(s,'XP durumum',DAY,true).mode,'local');
- assert.equal(Routing.route(s,'Bu hafta nasıldım?',DAY,true).mode,'local');
+ assert.equal(Routing.route(s,'XP durumum',DAY,false).mode,'local');
+ assert.equal(Routing.route(s,'Bu hafta nasıldım?',DAY,false).mode,'local');
 });
 test('open-ended questions can still use the on-device GGUF when ready',()=>{
  const r=Routing.route(withTask(),'Sence motivasyonumu kalıcı kılmak için hangi düşünce biçimini deneyeyim?',DAY,true);
@@ -50,14 +50,15 @@ test('generic refusal and generic greetings from small model are rejected with g
  const s=Core.initialState();
  for(const answer of ['Merhaba! Size nasıl yardımcı olabilirim?', 'Daha fazla yardımcı olamayım. Size nasıl yardımcı olabilirim?', 'Nasıl yardımcı olabilirim?']){
   const result=Routing.acceptModelReply(s,'Bugün ne yapayım?',answer,DAY);
-  assert.equal(result.usedFallback,true);
-  assert.match(result.reply,/görev|alışkanlık/i);
+  assert.equal(result.needsRetry,true);
+  assert.equal(result.reply,null);
+  
  }
 });
 test('useful original model answers survive guard with trim and max length',()=>{
  const s=withTask();
  const r=Routing.acceptModelReply(s,'Sence düzenli kitap okumayı nasıl sürdürebilirim?','20 dakika kitap okumak için her akşam aynı saatten başlayabilirsin.',DAY);
- assert.equal(r.usedFallback,false);
+ assert.equal(r.needsRetry,false);
  assert.match(r.reply,/20 dakika/);
 });
 test('routing helpers are included before app.js and used in the chat handler',()=>{
@@ -74,9 +75,9 @@ test('routing helpers are included before app.js and used in the chat handler',(
 test('Qwen system prompt asks for grounded and direct Turkish answers, no empty boilerplate',()=>{
  const fs=require('node:fs'),path=require('node:path');
  const native=fs.readFileSync(path.join(__dirname,'../app/src/main/java/com/ozgun/yolculuk66/OfflineAiHost.kt'),'utf8');
- assert.match(native,/doğrudan cevap ver/);
- assert.match(native,/Nasıl yardımcı olabilirim/);
- assert.match(native,/Kayıtlı görev yoksa/i);
+ assert.match(native,/doğrudan/);
+ assert.match(native,/genel yardım teklifi/);
+ assert.match(native,/uydurma/i);
 });
 
 test('AI Coach gives a one-tap create-task action when no habits exist',()=>{

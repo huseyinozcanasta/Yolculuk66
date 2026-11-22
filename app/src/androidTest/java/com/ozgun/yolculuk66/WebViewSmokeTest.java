@@ -68,17 +68,26 @@ public final class WebViewSmokeTest {
     assertEquals("true",javascript("typeof window.AndroidAI.openModelDownload==='function'"));
   }
 
-  @Test public void screenshotRegressionCoachAnswersTodaysPlanFromLocalRecords() throws Exception {
+  @Test public void coachUsesModelForQuestionsWhenLoadedAndSuppliesAppKnowledge() throws Exception {
     awaitAppReady();
     assertEquals("true",javascript(
       "var s=HabitCore.initialState();" +
+      "var r=YolculukCoachRouter.route(s,'Bu uygulama hakkında neler biliyorsun?',HabitCore.dayKey(),true);" +
+      "r.mode==='model' && r.reply===null"
+    ));
+    assertEquals("true",javascript(
+      "var s=HabitCore.initialState();" +
       "var r=YolculukCoachRouter.route(s,'Bugün ne yapayım?',HabitCore.dayKey(),true);" +
-      "r.mode==='local' && /alışkanlık|görev/i.test(r.reply) && !/Nasıl yardımcı olabilirim/i.test(r.reply)"
+      "r.mode==='model' && r.reply===null"
+    ));
+    assertEquals("true",javascript(
+      "var c=JSON.parse(YolculukCoachRouter.buildContext(HabitCore.initialState(),HabitCore.dayKey(),[]));" +
+      "c.app.includes('Yolculuk 66') && c.app.includes('66 gün') && c.game.includes('Henüz')"
     ));
     assertEquals("true",javascript(
       "var r=YolculukCoachRouter.acceptModelReply(HabitCore.initialState()," +
-      "'Bugün ne yapayım?','Daha fazla yardımcı olamayım. Size nasıl yardımcı olabilirim?',HabitCore.dayKey());" +
-      "r.usedFallback && /görev|alışkanlık/i.test(r.reply)"
+      "'Bu uygulama hakkında neler biliyorsun?','Size nasıl yardımcı olabilirim?',HabitCore.dayKey());" +
+      "r.needsRetry && r.reply===null"
     ));
   }
 
